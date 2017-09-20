@@ -1,0 +1,94 @@
+<%! 这种是页面声明的变量%> //声明的代码 跟sevlet生成的代码同级 
+
+
+<%@ includes 这种是引用java库 %>  //伪指令
+
+
+30000000 *0.8 / 86400 * 0.2
+
+2400000/17280/50
+
+370+892.90 =1262.90
+
+
+WebContent\META-INF\context.xml
+WebContent\WEB-INF\web.xml
+
+bool CServiceChecker::Ping(const std::string& strDestIp, int timeOut)
+{
+    try
+    {
+        IoService ios;
+        boost::system::error_code error;
+
+        ICMP::socket socket(ios);        
+        ICMP::endpoint destEndPoint(boost::asio::ip::address_v4::from_string(strDestIp.c_str()), 0);
+        socket.open(boost::asio::ip::icmp::v4());
+
+#if defined WIN32
+        int timeout = timeOut;
+        setsockopt(socket.native(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+        setsockopt(socket.native(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
+#else
+        struct timeval tv;
+        tv.tv_sec  = 0; 
+        tv.tv_usec = timeOut;         
+        setsockopt(socket.native(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        setsockopt(socket.native(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+
+        std::vector<char> sendBuff;
+        sendBuff.resize(sizeof(ICMP_HDR)+32);
+        ICMP_HDR * pIcmp=(ICMP_HDR *)sendBuff.data();
+
+        pIcmp->icmp_type=8;
+        pIcmp->icmp_code=0;
+        pIcmp->icmp_id=(unsigned short)GetPid();
+        pIcmp->icmp_checksum=0;
+        pIcmp->icmp_sequence=0;
+
+        memset(&sendBuff[sizeof(ICMP_HDR)],'E',32);
+
+        unsigned short nSeq=0;
+
+        pIcmp->icmp_checksum=0;
+        pIcmp->icmp_timestamp=GetTickCount();
+        pIcmp->icmp_sequence=nSeq++;
+        pIcmp->icmp_checksum= CheckSum((unsigned short *)sendBuff.data(),sizeof(ICMP_HDR)+32);
+
+
+        socket.connect(destEndPoint, error);
+        if (error)
+        {
+            printf("Connect Error:%s\n", error.message().c_str());
+            return false;
+        }
+
+        socket.send(boost::asio::buffer(sendBuff), 0, error);
+        if (error)
+        {
+            printf("Send Error:%s\n", error.message().c_str());
+            return false;
+        }
+
+        std::vector<char> recvBuf;
+        recvBuf.resize(128);
+        socket.receive(boost::asio::buffer(recvBuf), 0, error);
+        if (error)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+    catch (std::exception& e)
+    {
+        printf("Ping Exception:%s\n", e.what());
+    }
+
+    return false;
+}
+
+
